@@ -2,6 +2,6 @@
 module.exports = {
   mode: "jit",
   darkMode: "class",
-  content: ["./**/*.tsx", "./popup.tsx"],
+  content: ["./**/*.tsx", "./src/popup.tsx", "./src/style.css"],
   plugins: []
 }

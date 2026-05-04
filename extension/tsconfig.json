@@ -7,13 +7,14 @@
     ".plasmo/index.d.ts",
     "./**/*.ts",
     "./**/*.tsx"
-  ],
+, "./src/background.ts"  ],
   "compilerOptions": {
     "paths": {
       "~*": [
-        "./*"
+        "./src/*"
       ]
     },
+    "types": ["chrome"],
     "baseUrl": "."
   }
 }
