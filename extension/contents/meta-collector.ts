@@ -1,4 +1,5 @@
 import type { PlasmoCSConfig } from "plasmo";
+import type { MetaField } from "~types";
 
 
 export const config: PlasmoCSConfig = {
@@ -6,4 +7,5 @@ export const config: PlasmoCSConfig = {
     run_at: "document_idle"
 }
 
-let currentFields;
+let currentFields: Array<MetaField> = ["title", "description", "keywords"]
+let currentTerms: Array<string> = []

@@ -1,20 +1,25 @@
 import { Storage } from "@plasmohq/storage"
 import { extractPageMeta } from "../contents/parser";
-
-export {}
+import type { LiveRule, PageMeta, Session } from "~types";
 
 class FrocusTracker {
-    private storage = new Storage()
-    
-    test() {
-        chrome.tabs.onActivated.addListener(async ({ tabId }) => {
-            const tab = await chrome.tabs.get(tabId)
+    private rules: Array<LiveRule> = []
 
-            console.log("FROCUS: ", tab.active, ". DETAILS: ", extractPageMeta([]))
-        })
+    private session: Session | null = null
+
+    private metaCache = new Map<number, PageMeta>()
+
+    private timeAcc: Record<string, number> = {}
+    private metaAcc: Record<string, Array<PageMeta>> = {}
+
+    private isFocused = true
+    private switchDebounce: ReturnType<typeof setTimeout> | null = null
+
+    private readonly storage = new Storage({ area: "local" })
+
+    constructor() {
+        // attach the chrome listners, and init
     }
-
 }
 
-const frocus = new FrocusTracker()
-frocus.test()
+export const tracker = new FrocusTracker()
