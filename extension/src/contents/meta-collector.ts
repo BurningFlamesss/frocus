@@ -3,9 +3,6 @@ import type { PlasmoCSConfig } from "plasmo";
 import { extractMeta } from "~lib/parser";
 import { SPA_NAV_DEBOUNCE_MS, type MetaField, type PageMetaMessage, type RequestMetaMessage } from "~lib/types";
 
-console.log("META COLLECTOR RUNNING")
-
-
 export const config: PlasmoCSConfig = {
     matches: ["<all_urls>"],
     run_at: "document_idle",
@@ -62,7 +59,5 @@ observer.observe(document, {
     subtree: true,
     childList: true
 })
-
-console.log("META COLLECTOR RUNNING")
 
 pushMeta()

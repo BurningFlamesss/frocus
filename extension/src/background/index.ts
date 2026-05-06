@@ -18,9 +18,7 @@ class FrocusTracker {
 
     constructor() {
         // attach the chrome listners, and init
-        console.log("RUNNING THE INDEX FILE")
     }
-
 
 
     receivePageMeta(tabId: number, meta: PageMeta, url: string): void {
