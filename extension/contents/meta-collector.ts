@@ -9,3 +9,7 @@ export const config: PlasmoCSConfig = {
 
 let currentFields: Array<MetaField> = ["title", "description", "keywords"]
 let currentTerms: Array<string> = []
+
+async function pushMeta(): Promise<void> {
+    const meta = null;
+}

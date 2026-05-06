@@ -8,7 +8,7 @@ const handler: PlasmoMessaging.MessageHandler<PageMetaMessage, void> = (req, res
     const tabId = req.sender.tab.id
 
     if (tabId && meta && url) {
-        // tracker will receive page meta
+        tracker.receivePageMeta(tabId, meta, url)
     }
 
     res.send()

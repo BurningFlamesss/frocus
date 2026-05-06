@@ -20,6 +20,14 @@ class FrocusTracker {
     constructor() {
         // attach the chrome listners, and init
     }
+
+
+
+    receivePageMeta(tabId: number, meta: PageMeta, url: string): void {
+        console.log("TabId: ", tabId, " Meta: ", meta, " Url: ", url)
+    }
+
+
 }
 
 export const tracker = new FrocusTracker()
