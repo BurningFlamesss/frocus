@@ -1,5 +1,6 @@
 import { Storage } from "@plasmohq/storage"
-import type { LiveRule, PageMeta, Session } from "~lib/types";
+import { saveRules } from "~lib/store";
+import type { LiveRule, PageMeta, Rule, Session } from "~lib/types";
 
 class FrocusTracker {
     private rules: Array<LiveRule> = []
@@ -23,6 +24,10 @@ class FrocusTracker {
 
     receivePageMeta(tabId: number, meta: PageMeta, url: string): void {
         console.log("TabId: ", tabId, " Meta: ", meta, " Url: ", url)
+    }
+
+    updateRules(rules: Array<Rule>): void {
+        saveRules(rules)
     }
 
 

@@ -105,7 +105,7 @@ export type RequestMetaMessage = {
 }
 
 
-export const RULES_KEYS = "frocus_rules"
+export const RULES_KEY = "frocus_rules"
 export const SESSION_KEY = "frocus_session"
 export const TIME_KEY = (id: string) => `frocus_time_${id}`
 export const META_KEY = (id: string) => `frocus_meta_${id}`
