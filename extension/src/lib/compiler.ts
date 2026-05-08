@@ -1,4 +1,3 @@
-import value from "data-base64:*";
 import type { FieldMatcher, LiveCondition, LiveRule, MatchSpec, Rule, UrlCondition } from "./types";
 
 const normalizeHost = (hostname: string): string => hostname.replace(/^www\./i, "").toLowerCase()

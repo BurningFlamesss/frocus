@@ -143,10 +143,10 @@ class FrocusTracker {
             }
 
             await persistSession({
-                ruleIds: this.session.ruleIds,
-                primaryRuleId: this.session.primaryRuleId,
-                tabId: this.session.tabId,
-                startedAt: this.session.startedAt
+                ruleIds: this.session?.ruleIds,
+                primaryRuleId: this.session?.primaryRuleId,
+                tabId: this.session?.tabId,
+                startedAt: this.session?.startedAt
             })
 
             const primaryRule = ruleMap.get(primaryRuleId)
@@ -154,7 +154,7 @@ class FrocusTracker {
             if (primaryRule.needsMeta) {
                 const meta = await this.resolveSessionMeta(tab.id, primaryRule)
 
-                if (meta && this.session.primaryRuleId === primaryRuleId) {
+                if (meta && this.session?.primaryRuleId === primaryRuleId) {
                     this.session.meta = meta
                 }
             }
@@ -171,20 +171,20 @@ class FrocusTracker {
     private endSession(): void {
         if (!this.session) return
 
-        const duration = Date.now() - this.session.startedAt
+        const duration = Date.now() - this.session?.startedAt
 
         if (duration > 0) {
-            for (const id of this.session.ruleIds) {
+            for (const id of this.session?.ruleIds) {
                 this.timeAcc[id] = (this.timeAcc[id] ?? 0) + duration
             }
 
-            if (this.session.meta) {
-                const id = this.session.primaryRuleId;
-                (this.metaAcc[id] ??= []).push(this.session.meta)
+            if (this.session?.meta) {
+                const id = this.session?.primaryRuleId;
+                (this.metaAcc[id] ??= []).push(this.session?.meta)
             }
         }
 
-        console.log(`Session end: ${duration}ms > [${this.session.ruleIds.join(", ")}]`)
+        console.log(`Session end: ${duration}ms > [${this.session?.ruleIds.join(", ")}]`)
 
         // TODO: send notification to desktop app (session_end)
 
@@ -223,10 +223,10 @@ class FrocusTracker {
     receivePageMeta(tabId: number, meta: PageMeta, url: string): void {
         this.metaCache.set(tabId, meta)
 
-        if (this.session.tabId === tabId && this.session.primaryRuleId && !this.session.meta) {
+        if (this.session?.tabId === tabId && this.session?.primaryRuleId && !this.session?.meta) {
             chrome.tabs.get(tabId).then(tab => {
-                if (tab.url === url && this.session.tabId === tabId) {
-                    const rule = this.rules.find(rule => rule.id === this.session.primaryRuleId)
+                if (tab.url === url && this.session?.tabId === tabId) {
+                    const rule = this.rules.find(rule => rule.id === this.session?.primaryRuleId)
 
                     if (rule.needsMeta) this.session.meta = meta
                 }

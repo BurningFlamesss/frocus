@@ -24,4 +24,8 @@ export const DEFAULT_RULES: Array<Rule> = [
             { ref: "youtube" }
         ]
     },
+    {
+        id: "other",
+        match: { hostname: "/.*/" }   // regex that matches any hostname
+    }
 ]
