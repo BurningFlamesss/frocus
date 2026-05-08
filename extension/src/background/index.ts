@@ -1,7 +1,7 @@
 import { Storage } from "@plasmohq/storage"
-import { compileRules } from "~lib/compiler";
+import { compileRules, matchRules, parseUrl } from "~lib/compiler";
 import { DEFAULT_RULES } from "~lib/rules";
-import { loadPersistedSession, loadRules, persistSession, saveRules, type PersistedSession } from "~lib/store";
+import { flushMeta, flushTime, loadPersistedSession, loadRules, persistSession, saveRules, type PersistedSession } from "~lib/store";
 import { FLUSH_ALARM, FLUSH_PERIOD_MIN, RULES_KEY, SWITCH_DEBOUNCE_MS, type LiveRule, type PageMeta, type RequestMetaMessage, type Rule, type Session } from "~lib/types";
 
 class FrocusTracker {
@@ -32,10 +32,10 @@ class FrocusTracker {
         const orphan = await loadPersistedSession()
         if (orphan) this.recoverOrphanedSession(orphan)
 
-        // const existing = await chrome.alarms.get(FLUSH_ALARM)
-        // if (!existing) {
-        //     chrome.alarms.create(FLUSH_ALARM, { periodInMinutes: FLUSH_PERIOD_MIN })
-        // }
+        const existing = await chrome.alarms.get(FLUSH_ALARM)
+        if (!existing) {
+            chrome.alarms.create(FLUSH_ALARM, { periodInMinutes: FLUSH_PERIOD_MIN })
+        }
 
         this.storage.watch({
             [RULES_KEY]: ({ newValue }) => {
@@ -46,7 +46,7 @@ class FrocusTracker {
 
         try {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-            // if (tab?.id) this.scheduleSwitch(tab.id) // TODO: add scheduleSwitch
+            if (tab?.id) this.scheduleSwitch(tab.id)
         } catch (error) {
 
         }
@@ -55,13 +55,30 @@ class FrocusTracker {
     }
 
     private attachListeners(): void {
+        chrome.tabs.onActivated.addListener(({ tabId }) => this.scheduleSwitch(tabId))
 
+        chrome.tabs.onUpdated.addListener((tabId, { status }) => {
+            if (this.session?.tabId === tabId && status === "complete") {
+                this.scheduleSwitch(tabId)
+            }
+        })
+
+        chrome.tabs.onRemoved.addListener((tabId) => {
+            if (this.session?.tabId === tabId) this.endSession()
+            this.metaCache.delete(tabId)
+        })
+
+        chrome.windows.onFocusChanged.addListener(wind => this.handleFocusChange(wind))
+
+        chrome.alarms.onAlarm.addListener(({ name }) => {
+            if (name === FLUSH_ALARM) this.flush()
+        })
     }
 
     private async handleFocusChange(windowId: number): Promise<void> {
         if (windowId === chrome.windows.WINDOW_ID_NONE) {
             this.isFocused = false
-            // TODO: endSession()
+            this.endSession()
 
             // TODO: send notification to desktop app (focus_lost)
             // TODO: detect idle state
@@ -96,7 +113,59 @@ class FrocusTracker {
     }
 
     private async switchSession(tabId: number): Promise<void> {
+        if (!this.isFocused) return
 
+        try {
+            const tab = await chrome.tabs.get(tabId)
+            if (!tab.url || !tab.id) return
+
+            const url = parseUrl(tab.url)
+            if (!url) return
+
+            const allMatched = matchRules(url, this.rules)
+            const ruleMap = new Map(this.rules.map(rule => [rule.id, rule]))
+            const matchedIds = allMatched.filter(id => !ruleMap.get(id).groupOnly)
+
+            if (!matchedIds.length) {
+                this.endSession()
+                return
+            }
+
+            this.endSession()
+
+            const primaryRuleId = matchedIds[0]
+
+            this.session = {
+                ruleIds: matchedIds,
+                primaryRuleId,
+                tabId,
+                startedAt: Date.now()
+            }
+
+            await persistSession({
+                ruleIds: this.session.ruleIds,
+                primaryRuleId: this.session.primaryRuleId,
+                tabId: this.session.tabId,
+                startedAt: this.session.startedAt
+            })
+
+            const primaryRule = ruleMap.get(primaryRuleId)
+
+            if (primaryRule.needsMeta) {
+                const meta = await this.resolveSessionMeta(tab.id, primaryRule)
+
+                if (meta && this.session.primaryRuleId === primaryRuleId) {
+                    this.session.meta = meta
+                }
+            }
+
+            console.log("Session start: ", this.session)
+
+            // TODO: send notification to desktop app (session_start)
+
+        } catch (error) {
+
+        }
     }
 
     private endSession(): void {
@@ -144,7 +213,7 @@ class FrocusTracker {
             }
 
         } catch (error) {
-            
+
         }
 
         return null
@@ -161,7 +230,7 @@ class FrocusTracker {
 
                     if (rule.needsMeta) this.session.meta = meta
                 }
-            }).catch(() => {})
+            }).catch(() => { })
         }
 
         // console.log("TabId: ", tabId, " Meta: ", meta, " Url: ", url)
@@ -179,6 +248,33 @@ class FrocusTracker {
         }
 
         persistSession(null)
+    }
+
+    private async flush(): Promise<void> {
+        const hasTime = Object.keys(this.timeAcc).length > 0
+        const hasMeta = Object.keys(this.metaAcc).length > 0
+
+        if (!hasMeta && !hasTime) return
+
+        const timeSnap = this.timeAcc
+        const metaSnap = this.metaAcc
+        this.timeAcc = {}
+        this.metaAcc = {}
+
+        try {
+            await Promise.all([hasTime ? flushTime(timeSnap) : Promise.resolve(), hasMeta ? flushMeta(metaSnap) : Promise.resolve()])
+            console.log("Flush done: ", Object.keys(timeSnap))
+        } catch (error) {
+            console.warn("Flush failed. Restoring accumuators: ", error)
+
+            for (const [id, ms] of Object.entries(timeSnap)) {
+                this.timeAcc[id] = (this.timeAcc[id] ?? 0) + ms
+            }
+
+            for (const [id, metas] of Object.entries(metaSnap)) {
+                (this.metaAcc[id] ??= []).push(...metas)
+            }
+        }
     }
 
     getSession() {
