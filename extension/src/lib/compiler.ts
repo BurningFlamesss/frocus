@@ -71,7 +71,7 @@ function compilerMatcher(pattern: string, mode: "hostname" | "pathname" | "searc
         case "pathname":
             const withSlash = normalizedValue.endsWith("/") ? normalizedValue : `${normalizedValue}/`
             return value => value === normalizedValue || value.startsWith(withSlash)
-    
+
         case "search":
             return value => value.includes(normalizedValue)
     }
@@ -131,4 +131,30 @@ export function compileRules(rawRules: Array<Rule>): Array<LiveRule> {
             groupOnly: rule.groupOnly ?? false
         }
     })
+}
+
+export function matchRules(
+    url: {
+        hostname: string;
+        pathname: string;
+        search: string;
+    },
+    rules: Array<LiveRule>
+): Array<string> {
+    const matched: Array<string> = []
+
+    for (const rule of rules) {
+        for (const condition of rule.conditions) {
+            if (
+                (!condition.hostname || condition.hostname(url.hostname)) && 
+                (!condition.pathname || condition.pathname(url.pathname)) && 
+                (!condition.search || condition.search(url.search))
+            ) {
+                matched.push(rule.id)
+                break
+            }
+        }
+    }
+
+    return matched
 }
