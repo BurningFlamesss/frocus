@@ -2,30 +2,43 @@ import type { Rule } from "./types";
 
 export const DEFAULT_RULES: Array<Rule> = [
     {
-        id: "youtube_shorts",
-        match: { hostname: "youtube.com", pathname: "/shorts" },
-        meta: ["title", "description", "keywords", "og:image"],
-        include: ["trending", "viral", "shorts"]
-    },
-    {
         id: "youtube",
         match: { hostname: "youtube.com" },
-        groupOnly: true
+        behaviour: { emit: "never" }
     },
     {
         id: "instagram",
         match: { hostname: "instagram.com" },
-        groupOnly: true
+        behaviour: { emit: "never" }
     },
     {
         id: "dopamine_intox",
         match: [
-            { ref: "instagram" },
-            { ref: "youtube" }
-        ]
+            { ref: "youtube" },
+            { ref: "instagram" }
+        ],
+        behaviour: { priority: 100 }
+    },
+    {
+        id: "youtube_shorts",
+        match: {
+            hostname: "youtube.com",
+            pathname: "/shorts"
+        },
+        behaviour: {
+            category: "youtube",
+            priority: 200,
+            supress: ["dopamine_intox"]
+        }
+    },
+    {
+        id: "deep_work",
+        match: { hostname: "linear.app" },
+        behaviour: { exclusive: true }
     },
     {
         id: "other",
-        match: { hostname: "/.*/" }   // regex that matches any hostname
+        match: { hostname: "/.*/" },
+        behaviour: { emit: "fallback" }
     }
 ]

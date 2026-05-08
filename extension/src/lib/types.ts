@@ -29,12 +29,21 @@ export type MatchSpec = UrlCondition | RefCondition
 //     include?: Array<string>
 // }
 
+export type RuleBehaviour = {
+    emit?: "always" | "never" | "fallback";
+    priority?: number;
+    supress?: Array<string>;
+    exclusive?: boolean;
+    batchWith?: Array<string>;
+    category?: string;
+}
+
 export type Rule = {
     id: string;
     match: MatchSpec | Array<MatchSpec>;
     meta?: Array<MetaField>;
     include?: Array<string>;
-    groupOnly?: boolean;
+    behaviour?: RuleBehaviour;
 }
 
 
@@ -61,7 +70,7 @@ export type LiveRule = {
     metaFields: Array<MetaField>;
     include: Array<string>;
     needsMeta: boolean;
-    groupOnly: boolean;
+    behaviour: Required<RuleBehaviour>;
 }
 
 // export type PageMeta = {

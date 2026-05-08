@@ -1,5 +1,6 @@
 import { Storage } from "@plasmohq/storage"
 import { compileRules, matchRules, parseUrl } from "~lib/compiler";
+import { resolveRules } from "~lib/resolver";
 import { DEFAULT_RULES } from "~lib/rules";
 import { flushMeta, flushTime, loadPersistedSession, loadRules, persistSession, saveRules, type PersistedSession } from "~lib/store";
 import { FLUSH_ALARM, FLUSH_PERIOD_MIN, RULES_KEY, SWITCH_DEBOUNCE_MS, type LiveRule, type PageMeta, type RequestMetaMessage, type Rule, type Session } from "~lib/types";
@@ -124,7 +125,10 @@ class FrocusTracker {
 
             const allMatched = matchRules(url, this.rules)
             const ruleMap = new Map(this.rules.map(rule => [rule.id, rule]))
-            const matchedIds = allMatched.filter(id => !ruleMap.get(id).groupOnly)
+            const matchedIds = resolveRules(
+                allMatched,
+                this.rules
+            )
 
             if (!matchedIds.length) {
                 this.endSession()

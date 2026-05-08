@@ -127,7 +127,14 @@ export function compileRules(rawRules: Array<Rule>): Array<LiveRule> {
             metaFields,
             include,
             needsMeta: metaFields.length > 0 || include.length > 0,
-            groupOnly: rule.groupOnly ?? false
+            behaviour: {
+                emit: rule.behaviour?.emit ?? "always",
+                priority: rule.behaviour?.priority ?? 0,
+                supress: rule.behaviour?.supress ?? [],
+                exclusive: rule.behaviour?.exclusive ?? false,
+                batchWith: rule.behaviour?.batchWith ?? [],
+                category: rule.behaviour?.category ?? ""
+            }
         }
     })
 }
@@ -145,8 +152,8 @@ export function matchRules(
     for (const rule of rules) {
         for (const condition of rule.conditions) {
             if (
-                (!condition.hostname || condition.hostname(url.hostname)) && 
-                (!condition.pathname || condition.pathname(url.pathname)) && 
+                (!condition.hostname || condition.hostname(url.hostname)) &&
+                (!condition.pathname || condition.pathname(url.pathname)) &&
                 (!condition.search || condition.search(url.search))
             ) {
                 matched.push(rule.id)
