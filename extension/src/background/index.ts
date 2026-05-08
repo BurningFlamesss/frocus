@@ -2,7 +2,7 @@ import { Storage } from "@plasmohq/storage"
 import { compileRules } from "~lib/compiler";
 import { DEFAULT_RULES } from "~lib/rules";
 import { loadPersistedSession, loadRules, persistSession, saveRules, type PersistedSession } from "~lib/store";
-import { FLUSH_ALARM, FLUSH_PERIOD_MIN, RULES_KEY, type LiveRule, type PageMeta, type Rule, type Session } from "~lib/types";
+import { FLUSH_ALARM, FLUSH_PERIOD_MIN, RULES_KEY, SWITCH_DEBOUNCE_MS, type LiveRule, type PageMeta, type RequestMetaMessage, type Rule, type Session } from "~lib/types";
 
 class FrocusTracker {
     private rules: Array<LiveRule> = []
@@ -48,7 +48,7 @@ class FrocusTracker {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
             // if (tab?.id) this.scheduleSwitch(tab.id) // TODO: add scheduleSwitch
         } catch (error) {
-            
+
         }
 
         console.log("Frocus Tracker is ready. Rules: ", this.rules)
@@ -79,20 +79,92 @@ class FrocusTracker {
                 windowId
             })
 
-            if (tab.id) {
-                // TDOD: ScheduleSwitch tab
-            }
+            if (tab.id) this.scheduleSwitch(tab.id)
+
         } catch (error) {
-            
+
         }
 
     }
 
-    
+    private scheduleSwitch(tabId: number): void {
+        if (this.switchDebounce) clearTimeout(this.switchDebounce)
+
+        this.switchDebounce = setTimeout(() => {
+            this.switchSession(tabId)
+        }, SWITCH_DEBOUNCE_MS);
+    }
+
+    private async switchSession(tabId: number): Promise<void> {
+
+    }
+
+    private endSession(): void {
+        if (!this.session) return
+
+        const duration = Date.now() - this.session.startedAt
+
+        if (duration > 0) {
+            for (const id of this.session.ruleIds) {
+                this.timeAcc[id] = (this.timeAcc[id] ?? 0) + duration
+            }
+
+            if (this.session.meta) {
+                const id = this.session.primaryRuleId;
+                (this.metaAcc[id] ??= []).push(this.session.meta)
+            }
+        }
+
+        console.log(`Session end: ${duration}ms > [${this.session.ruleIds.join(", ")}]`)
+
+        // TODO: send notification to desktop app (session_end)
+
+        persistSession(null)
+
+        this.session = null
+    }
+
+
+    private async resolveSessionMeta(tabId: number, rule: LiveRule): Promise<PageMeta | null> {
+        const cached = this.metaCache.get(tabId)
+
+        if (cached) return cached
+
+        try {
+            const message: RequestMetaMessage = {
+                type: "REQUEST_META",
+                metaFields: rule.metaFields,
+                includeTerms: rule.include
+            }
+            const meta = await chrome.tabs.sendMessage(tabId, message) as PageMeta | undefined
+
+            if (meta) {
+                this.metaCache.set(tabId, meta)
+                return meta
+            }
+
+        } catch (error) {
+            
+        }
+
+        return null
+    }
 
 
     receivePageMeta(tabId: number, meta: PageMeta, url: string): void {
-        console.log("TabId: ", tabId, " Meta: ", meta, " Url: ", url)
+        this.metaCache.set(tabId, meta)
+
+        if (this.session.tabId === tabId && this.session.primaryRuleId && !this.session.meta) {
+            chrome.tabs.get(tabId).then(tab => {
+                if (tab.url === url && this.session.tabId === tabId) {
+                    const rule = this.rules.find(rule => rule.id === this.session.primaryRuleId)
+
+                    if (rule.needsMeta) this.session.meta = meta
+                }
+            }).catch(() => {})
+        }
+
+        // console.log("TabId: ", tabId, " Meta: ", meta, " Url: ", url)
     }
 
     private recoverOrphanedSession(orphan: PersistedSession): void {
