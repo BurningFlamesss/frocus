@@ -3,9 +3,11 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "src/app/main.ts",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev:ui": "vite",
+    "dev:app": "electron .",
+    "build:ui": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
