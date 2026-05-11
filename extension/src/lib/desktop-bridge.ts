@@ -17,6 +17,10 @@ export type SessionEndEvent = {
     tabId: number;
 }
 
+const PORT_RANGE_START = 7423
+const PORT_RANGE_END = 7433
+const PORT_PROBE_TIMEOUT_MS = 400
+const PORT_CACHE_KEY = "frocus_ws_port"
 const CLIENT_ID_KEY = "frocus_client_id"
 
 export type FrocusEvent = SessionEndEvent | { event: "focus_lost" } | { event: "focus_gained" }
@@ -33,6 +37,32 @@ function detectBrowser(): BrowserType {
     return "unknown"
 }
 
+async function discoverPort(): Promise<number | null> {
+    const stored = await chrome.storage.local.get(PORT_CACHE_KEY)
+    const cached = stored[PORT_CACHE_KEY] as number | undefined
+
+    if (cached && (await probePort(cached))) return cached
+
+    for (let port = PORT_RANGE_START; port < PORT_RANGE_END; port++) {
+        if (port === cached) continue
+        
+        if (await probePort(port)) {
+            await chrome.storage.local.set({ [PORT_CACHE_KEY]: port })
+            return port
+        }
+    }
+
+    return null
+}
+
+function probePort(port: number): Promise<boolean> {
+    return new Promise(resolve => {
+        const socket = new WebSocket(`ws://127.0.0.1:${port}`)
+
+        resolve(true)
+    })
+}
+
 async function getOrCreateClientId(): Promise<string> {
     const stored = await chrome.storage.local.get(CLIENT_ID_KEY)
     const existing = stored[CLIENT_ID_KEY] as string | null
@@ -47,8 +77,15 @@ async function getOrCreateClientId(): Promise<string> {
 }
 
 class DesktopBridgeClient {
+    private socket: WebSocket | null = null
+    private connected = false
+
     private clientId: string | null = null
     private readonly browserType = detectBrowser()
+
+    private reconnectAttempts = 0
+    private reconnectTimer: ReturnType<typeof setTimeout> | null = null
+    private passiveMode = false
 
     constructor() {
         this.boot()
@@ -56,7 +93,12 @@ class DesktopBridgeClient {
 
     private async boot(): Promise<void> {
         this.clientId = await getOrCreateClientId()
+        this.connect()
     }
+
+    private async connect(): Promise<void> {
+        const port = null
+    }   
 
     async send(event: FrocusEvent) {
         console.log("Event: ", event)
