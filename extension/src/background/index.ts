@@ -131,7 +131,8 @@ class FrocusTracker {
 
             this.scheduleSwitch()
 
-            // TODO: send notification to desktop app (focus_lost)
+            desktopBridge.send({ event: "focus_lost" })
+
             // TODO: detect idle state
 
             return
@@ -139,7 +140,7 @@ class FrocusTracker {
 
         this.isFocused = true
 
-        // TODO: send notification to desktop app (focus_gained)
+        desktopBridge.send({ event: "focus_gained" })
 
         try {
             const [tab] = await chrome.tabs.query({
@@ -254,7 +255,7 @@ class FrocusTracker {
 
             console.log("Session start: ", this.session)
 
-            // TODO: send notification to desktop app (session_start)
+            // TODO: send notification to desktop app (session_start), let me check if it's actually needed
         } catch (error) { }
     }
 
@@ -287,9 +288,10 @@ class FrocusTracker {
 
         console.log(`Session end: ${duration}ms > [${this.session?.ruleIds.join(", ")}]`)
 
-        // TODO: send notification to desktop app (session_end)
         desktopBridge.send({
             event: "session_end",
+            clientId: "", // desktopBridge.getClientId() ?? crypto.randomUUID()
+            browserType: "", // desktopBridge.getBrowserType()
             ruleIds: this.session.ruleIds,
             primaryRuleId: this.session.primaryRuleId,
             category: primaryRule?.behavior.category,
