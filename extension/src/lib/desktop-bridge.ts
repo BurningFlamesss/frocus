@@ -1,4 +1,5 @@
 import type { PageMeta } from "./types";
+import iconUrl from "url:~assets/icon.development.png"
 
 export type SessionEndEvent = {
     event: "session_end";
@@ -119,7 +120,7 @@ class DesktopBridgeClient {
         const port = await discoverPort()
 
         if (!port) {
-            // unavailable
+            void this.onAppUnavailable()
             return
         }
 
@@ -148,6 +149,37 @@ class DesktopBridgeClient {
     private onClose(): void {
         this.connected = false
         this.socket = null
+        this.scheduleReconnect()
+    }
+
+    private async onAppUnavailable(): Promise<void> {
+        this.reconnectAttempts++
+
+        if (this.reconnectAttempts >= PASSIVE_THRESHOLD && !this.passiveMode) {
+            this.passiveMode = true
+            // log
+
+            const { frocusOfflineNotifiedAt } = await chrome.storage.local.get("frocusOfflineNotifiedAt")
+            const now = Date.now()
+
+            if (!frocusOfflineNotifiedAt || now - frocusOfflineNotifiedAt > 24 * 60 * 60 * 1000) {
+                await chrome.storage.local.set({ frocusOfflineNotifiedAt: now })
+
+                chrome.notifications.create("frocus-app-offline", {
+                    type: "basic",
+                    iconUrl,
+                    title: "Frocus Desktop app is offline",
+                    message: "Frocus Desktop application is offline or installed. Click to open it or download the app",
+                    requireInteraction: true
+                })
+
+                chrome.notifications.onClicked.addListener((id) => {
+                    if (id === "frocus-app-offline") {
+                        chrome.tabs.create({ url: chrome.runtime.getURL("tabs/setup.html") })
+                    }
+                })
+            }
+        }
         this.scheduleReconnect()
     }
 
