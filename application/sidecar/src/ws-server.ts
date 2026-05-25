@@ -1,3 +1,4 @@
+import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaClient } from "@prisma/client";
 import * as http from "http"
 import { WebSocketServer, WebSocket } from "ws";
@@ -15,9 +16,18 @@ interface EventEnvelope {
     [key: string]: any;
 }
 
+process.on("uncaughtException", console.error);
+process.on("unhandledRejection", console.error);
+
 const registry = new Map<string, WebSocket>()
 
-const prisma = new PrismaClient()
+const adapter = new PrismaBetterSqlite3({
+    url: "file:./dev.db"
+})
+
+const prisma = new PrismaClient({
+    adapter
+})
 
 async function startServer() {
     await prisma.$connect().catch(console.error)
@@ -140,4 +150,7 @@ process.stdin.on("data", (data) => {
     }
 })
 
-startServer()
+startServer().catch((error) => {
+    console.error("[SIDECAR ERROR]", error);
+    process.exit(1);
+})
