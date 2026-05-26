@@ -1,6 +1,10 @@
+import MainView from "../components/calendar/MainView";
+
 function Calendar() {
     return (
-        <div>Calendar</div>
+        <div>
+            <MainView></MainView>
+        </div>
     )
 }
 
