@@ -5,9 +5,8 @@ import type {
     EventEnvelope,
     HandshakeMessage,
     SessionEndEvent,
-    SessionInsert,
-} from "@frocus/behavior-core";
-import { sessions } from "@frocus/behavior-core";
+} from "@frocus/behavior-core/src/events";
+import { sessions, SessionInsert } from "@frocus/behavior-core/src/schema";
 import * as http from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
 
