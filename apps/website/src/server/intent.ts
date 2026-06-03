@@ -2,6 +2,11 @@ import { createServerFn } from "@tanstack/react-start";
 import type { VoiceCommand } from "#/types/voice.ts";
 import { z } from "zod";
 
+const zodVoiceSchema = z.union([
+    z.custom<z.ZodTypeAny>(),
+    z.record(z.string(), z.unknown())
+])
+
 const ParseIntentInput = z.object({
     transcript: z.string(),
     context: z.object({
@@ -9,8 +14,8 @@ const ParseIntentInput = z.object({
             path: z.string(),
             name: z.string()
         })).optional(),
-        forms: z.record(z.string(), z.any()).optional(),
-        actions: z.record(z.string(), z.any()).optional(),
+        forms: z.record(z.string(), zodVoiceSchema).optional(),
+        actions: z.record(z.string(), zodVoiceSchema).optional(),
         language: z.string().optional()
     })
 })
@@ -21,4 +26,6 @@ export interface ParseIntentResult {
 
 export const parseIntent = createServerFn({ method: "POST" })
     .inputValidator(ParseIntentInput)
-    .handler()
+    .handler(async ({ data }) => {
+
+    })
