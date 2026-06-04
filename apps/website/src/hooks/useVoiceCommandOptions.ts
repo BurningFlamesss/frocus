@@ -1,4 +1,5 @@
 import type { VoiceCommandContext, VoiceCommandResult, VoiceState } from "#/types/voice.ts";
+import { useState } from "react";
 
 
 export interface UseVoiceCommandOptions {
@@ -21,3 +22,17 @@ export interface UseVoiceCommandReturn {
     reset: () => void;
 }
 
+export function useVoiceCommand({
+    context,
+    onCommand,
+    onError,
+    minConfidence = 0.70,
+    maxDurationMs = 30_000
+}: UseVoiceCommandOptions): UseVoiceCommandReturn {
+    const [state, setState] = useState<VoiceState>("idle")
+    const [result, setResult] = useState<VoiceCommandResult | null>(null)
+    const [transcript, setTranscript] = useState<string | null>(null)
+    const [error, setError] = useState<Error | null>(null)
+
+    
+}
