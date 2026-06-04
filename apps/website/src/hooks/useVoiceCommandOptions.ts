@@ -40,6 +40,20 @@ export function useVoiceCommand({
     const startTimeRef = useRef<number>(0)
     const maxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+    const stopStream = () => {
+        streamRef.current?.getTracks().map((track) => track.stop())
+        streamRef.current = null
+    }
+
+    const clearTimer = () => {
+        if (maxTimerRef.current) {
+            clearTimeout(maxTimerRef.current)
+        }
+        maxTimerRef.current = null
+    }
+
+
+
     const start = async () => {
 
     }
