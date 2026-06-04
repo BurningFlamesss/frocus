@@ -1,5 +1,5 @@
 import type { VoiceCommandContext, VoiceCommandResult, VoiceState } from "#/types/voice.ts";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 
 export interface UseVoiceCommandOptions {
@@ -33,6 +33,12 @@ export function useVoiceCommand({
     const [result, setResult] = useState<VoiceCommandResult | null>(null)
     const [transcript, setTranscript] = useState<string | null>(null)
     const [error, setError] = useState<Error | null>(null)
+
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+    const streamRef = useRef<MediaStream | null>(null)
+    const chunksRef = useRef<Array<Blob>>([])
+    const startTimeRef = useRef<number>(0)
+    const maxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     const start = async () => {
 
