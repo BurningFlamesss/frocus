@@ -36,10 +36,11 @@ export function createExecutor(config: ExecutorConfig) {
                 }
 
                 handler(command.payload)
+                const filled = Object.entries(command.payload).map(([key, value]) => `${key}=${value}`).join(", ")
 
                 return {
                     success: true,
-                    message: ""
+                    message: `Updated form "${command.target}": ${filled}`
                 }
             }
 
@@ -53,9 +54,11 @@ export function createExecutor(config: ExecutorConfig) {
                 }
 
                 handler(command.payload ?? {})
+                const withPayload = command.payload && Object.keys(command.payload).length > 0 ? `with ${JSON.stringify(command.payload)}` : ""
+
                 return {
                     success: true,
-                    message: ""
+                    message: `Executed "${command.action}" ${withPayload}`
                 }
             }
 
