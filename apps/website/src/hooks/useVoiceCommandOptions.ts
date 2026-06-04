@@ -71,7 +71,23 @@ export function useVoiceCommand({
         setTranscript(null)
         chunksRef.current = []
 
-        
+        let stream: MediaStream;
+
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        } catch (error) {
+            return fail(new Error("Microphone access denied. Please allow microphone permissions."))
+        }
+
+        streamRef.current = stream
+
+        // mimeType list from google
+        const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/mp4"].find(mType => MediaRecorder.isTypeSupported(mType) ?? "")
+
+        const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {})
+        mediaRecorderRef.current = recorder
+
+
     }
 
     const stop = () => {
