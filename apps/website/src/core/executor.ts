@@ -19,18 +19,52 @@ export interface ExecuteResult {
 export function createExecutor(config: ExecutorConfig) {
     return async function executeCommand(command: VoiceCommand): Promise<ExecuteResult> {
         switch (command.type) {
-            case "navigation":
+            case "navigation": {
                 config.navigate(command.target)
                 return {
                     success: true,
                     message: ""
                 }
+            }
+            case "form_fill": {
+                const handler = config.forms[command.target]
+                if (!handler) {
+                    return {
+                        success: false,
+                        message: ""
+                    }
+                }
 
-            default:
+                handler(command.payload)
+
+                return {
+                    success: true,
+                    message: ""
+                }
+            }
+
+            case "action": {
+                const handler = config.actions[command.action]
+                if (!handler) {
+                    return {
+                        success: false,
+                        message: ""
+                    }
+                }
+
+                handler(command.payload ?? {})
+                return {
+                    success: true,
+                    message: ""
+                }
+            }
+
+            case "unknown": {
                 return {
                     success: false,
                     message: ""
                 }
+            }
         }
     }
 }
