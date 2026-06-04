@@ -1,5 +1,5 @@
 import type { VoiceCommandContext, VoiceCommandResult, VoiceState } from "#/types/voice.ts";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 
 export interface UseVoiceCommandOptions {
@@ -52,10 +52,26 @@ export function useVoiceCommand({
         maxTimerRef.current = null
     }
 
+    const fail = (error: Error) => {
+        stopStream()
+        clearTimer()
+        setState("error")
+        setError(error)
+        onError?.(error)
+    }
 
 
     const start = async () => {
+        if (state === "recording") {
+            return
+        }
 
+        setError(null)
+        setResult(null)
+        setTranscript(null)
+        chunksRef.current = []
+
+        
     }
 
     const stop = () => {
