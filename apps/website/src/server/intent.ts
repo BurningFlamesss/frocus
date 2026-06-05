@@ -35,7 +35,7 @@ export interface AIResponse {
 
 export const parseIntent = createServerFn({ method: "POST" })
     .inputValidator(ParseIntentInput)
-    .handler(async ({ data }) => {
+    .handler(async ({ data }): Promise<ParseIntentResult> => {
         const apiKey = process.env.OPENROUTER_API_KEY
 
         if (!apiKey) {
@@ -75,7 +75,7 @@ export const parseIntent = createServerFn({ method: "POST" })
             const rawArray: Array<unknown> = Array.isArray(parsed) ? parsed : [parsed]
 
             const commands = rawArray.map(item => ({
-
+                
             }))
 
             return {

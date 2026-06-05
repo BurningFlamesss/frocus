@@ -1,3 +1,4 @@
+import { parseIntent } from "#/server/intent.ts";
 import { TranscribeAudio } from "#/server/stt.ts";
 import type { VoiceCommandContext, VoiceCommandResult, VoiceState } from "#/types/voice.ts";
 import { useRef, useState } from "react";
@@ -85,6 +86,26 @@ export function useVoiceCommand({
         } catch (err) {
             return fail(err as Error)
         }
+
+        if (!rawTranscript.trim()) {
+            return fail(new Error("No speech detected. Please try again!"))
+        }
+
+        setState("parsing")
+        let commands: VoiceCommandResult["command"]
+
+        try {
+            ({ commands } = await parseIntent({
+                data: {
+                    transcript: rawTranscript,
+                    context
+                }
+            }))
+        } catch (err) {
+            return fail(err as Error)
+        }
+
+        
     }
 
 
