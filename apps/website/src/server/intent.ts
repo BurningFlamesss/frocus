@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { UnknownCommand, VoiceCommand, VoiceCommandContext } from "#/types/voice.ts";
+import type { NavigationCommand, UnknownCommand, VoiceCommand, VoiceCommandContext } from "#/types/voice.ts";
 import { z } from "zod";
 import axios, { type AxiosError } from "axios";
 
@@ -52,8 +52,17 @@ function validateSingleCommand(raw: unknown, context: VoiceCommandContext): Voic
 
     switch (object.type) {
         case "navigation": {
-            
-            break;
+            const allowedPaths = (context.routes ?? []).map(route => route.path)
+
+            if (!allowedPaths.includes(object.target as string)) {
+                return unknownFallback(`Route "${object.target}" is not in allowedlist`)
+            }
+
+            return {
+                type: "navigation",
+                target: object.target as string,
+                confidence: (object.confidence as number) ?? 0,
+            } satisfies NavigationCommand
         }
     
         case "form_fill": {
