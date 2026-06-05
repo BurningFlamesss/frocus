@@ -117,7 +117,10 @@ export function useVoiceCommand({
     }
 
     const stop = () => {
-        
+        clearTimer()
+        if (mediaRecorderRef.current?.state === "recording") {
+            mediaRecorderRef.current.stop()
+        }
     }
 
     const reset = () => {
