@@ -1,5 +1,5 @@
 import { parseIntent } from "#/server/intent.ts";
-import { TranscribeAudio } from "#/server/stt.ts";
+import { transcribeAudio } from "#/server/stt.ts";
 import type { VoiceCommandContext, VoiceCommandResult, VoiceState } from "#/types/voice.ts";
 import { useRef, useState } from "react";
 
@@ -75,7 +75,7 @@ export function useVoiceCommand({
 
         let rawTranscript: string;
         try {
-            ({ transcript: rawTranscript } = await TranscribeAudio({
+            ({ transcript: rawTranscript } = await transcribeAudio({
                 data: {
                     audioBase64,
                     mimeType,
@@ -105,7 +105,27 @@ export function useVoiceCommand({
             return fail(err as Error)
         }
 
-        
+        const gated = commands.map(command => {
+            if (command.confidence < minConfidence) {
+                return {
+                    type: "unknown" as const,
+                    confidence: command.confidence,
+                    rawTranscript: rawTranscript
+                }
+            }
+
+            return command
+        })
+
+        const commandResult: VoiceCommandResult = {
+            command: gated,
+            transcript: rawTranscript,
+            durationMs: Date.now() - startTimeRef.current
+        }
+
+        setResult(commandResult)
+        setState("ready")
+        onCommand?.(commandResult)
     }
 
 

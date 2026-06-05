@@ -13,7 +13,7 @@ export interface TranscribeResult {
     transcript: string
 }
 
-export const TranscribeAudio = createServerFn({ method: "POST" })
+export const transcribeAudio = createServerFn({ method: "POST" })
     .inputValidator(TranscribeInput)
     .handler(async ({ data }): Promise<TranscribeResult> => {
 
