@@ -33,13 +33,24 @@ export interface AIResponse {
     }>
 }
 
+function buildSystemPrompt(context: VoiceCommandContext): string {
+    const routeBlock = context.routes && context.routes.length > 0 ? context.routes.map(route => ` "${route.path}" <- ${route.name}`) : " (none)"
+
+    // TODO: get formBlock, and actionBlock
+
+    return `
+        
+    `
+
+}
+
 function getMissingRequiredFields(payload: Record<string, unknown>, schema: VoiceSchema): Array<string> {
     if (!(schema instanceof z.ZodType)) {
         return []
     }
 
     // TODO: Get missing fields 
-    
+
     return []
 }
 
