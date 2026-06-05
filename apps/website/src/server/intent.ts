@@ -66,11 +66,20 @@ function validateSingleCommand(raw: unknown, context: VoiceCommandContext): Voic
         }
     
         case "form_fill": {
+            const formSchema = context.forms?.[object.target as string]
 
+            if (!formSchema) {
+                return unknownFallback(`Form "${object.target}" isnot registered`)
+            }
             break;
         }
 
         case "action": {
+            const actionSchema = context.actions?.[object.action as string]
+
+            if (!actionSchema) {
+                return unknownFallback(`Action "${object.action}" isnot registered`)
+            }
 
             break;
         }
