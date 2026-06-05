@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { VoiceCommand, VoiceCommandContext } from "#/types/voice.ts";
+import type { UnknownCommand, VoiceCommand, VoiceCommandContext } from "#/types/voice.ts";
 import { z } from "zod";
 import axios, { type AxiosError } from "axios";
 
@@ -33,9 +33,19 @@ export interface AIResponse {
     }>
 }
 
+function unknownFallback(reason: string): UnknownCommand {
+    console.warn("[INTENT] ", reason)
+
+    return {
+        type: "unknown",
+        confidence: 0,
+        rawTranscript: reason
+    }
+}
+
 function validateSingleCommand(raw: unknown, context: VoiceCommandContext): VoiceCommand {
     if (typeof raw !== "object" || raw === null) {
-        return;
+        return unknownFallback("No Object in command array");
     }
 
     const object = raw as Record<string, unknown>
@@ -57,13 +67,18 @@ function validateSingleCommand(raw: unknown, context: VoiceCommandContext): Voic
         }
 
         case "unknown": {
-
-            break;
+            return {
+                type: "unknown",
+                confidence: (object.confidence as number) ?? 0,
+                rawTranscript: (object.rawTranscript as string) ?? ""
+            } satisfies UnknownCommand
         }
 
         default:
-            break;
+            return unknownFallback(`Unknown Command type: ${object.type}`)
     }
+
+    return unknownFallback("Misformed Object")
 }
 
 export const parseIntent = createServerFn({ method: "POST" })
