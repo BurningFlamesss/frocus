@@ -1,3 +1,4 @@
+import { TranscribeAudio } from "#/server/stt.ts";
 import type { VoiceCommandContext, VoiceCommandResult, VoiceState } from "#/types/voice.ts";
 import { useRef, useState } from "react";
 
@@ -69,6 +70,20 @@ export function useVoiceCommand({
             audioBase64 = Buffer.from(buffer).toString("base64")
         } catch (err) {
             return fail(new Error(`Failed to encode audio: ${(err as Error).message}`))
+        }
+
+        let rawTranscript: string;
+        try {
+            ({ transcript: rawTranscript } = await TranscribeAudio({
+                data: {
+                    audioBase64,
+                    mimeType,
+                    languageCode: context.language ?? "ne"
+                }
+            }))
+            setTranscript(rawTranscript)
+        } catch (err) {
+            return fail(err as Error)
         }
     }
 
