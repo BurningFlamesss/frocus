@@ -82,8 +82,12 @@ ${formBlock}
 - ACTIONS (for action)
 ${actionBlock}
 
-
-    `
+### LANGUAGE NOTES
+- Transcript may be Nepali (Devanagari), English, or mixed.
+- Identifiers in output (keys, action names, paths) are always Latin-Script verbatim copies from the allowedlists.
+- String payload values (eg. product name) may be in Nepali if appropriate.
+- Numbers are always plain JSON numbers regardless of source language.
+    `.trim()
 
 }
 
@@ -201,7 +205,7 @@ export const parseIntent = createServerFn({ method: "POST" })
             throw new Error("[INTENT] OPENROUTER_API_KEY isnot configured")
         }
 
-        const systemPrompt = ""
+        const systemPrompt = buildSystemPrompt(data.context)
 
         try {
             const response = await axios.post<AIResponse>("https://openrouter.ai/api/v1/chat/completions", {
