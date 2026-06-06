@@ -51,8 +51,8 @@ interface JsonSchemaObject {
 }
 
 interface ValidatePayloadResult {
-    data: Record<string, unknown>,
-    schema: VoiceSchema
+    data: Record<string, string | number | boolean | null>,
+    warning?: string;
 }
 
 
@@ -138,7 +138,6 @@ function buildSystemPrompt(context: VoiceCommandContext): string {
     const routeBlock = context.routes && context.routes.length > 0 ? context.routes.map(route => ` "${route.path}" <- ${route.name}`) : " (none)"
     const formBlock = context.forms && Object.keys(context.forms).length > 0 ? Object.entries(context.forms).map(([id, schema]) => schemaToPromptBlock(id, schema)).join("\n\n") : " (none)"
     const actionBlock = context.actions && Object.keys(context.actions).length > 0 ? Object.entries(context.actions).map(([id, schema]) => schemaToPromptBlock(id, schema)).join("\n\n") : " (none)"
-    // TODO: get formBlock, and actionBlock
 
     return `
 You are a voice command parser for a web application.
@@ -221,7 +220,27 @@ function preCoerceNumbers(
 }
 
 function validatePayload(rawPayload: Record<string, unknown>, schema: VoiceSchema): ValidatePayloadResult {
+    const coerced = preCoerceNumbers(rawPayload, schema)
 
+    if (!(schema instanceof z.ZodType)) {
+        return {
+            data: coerced as Record<string, string | number | boolean | null>
+        }
+    }
+
+    const result = schema.safeParse(coerced)
+
+    if (!result.success) {
+        const warning = result.error.issues.map((issue) => `${issue.path.join(".")}:${issue.message}`).join("; ")
+        return {
+            data: coerced as Record<string, string | number | boolean | null>,
+            warning
+        }
+    }
+
+    return {
+        data: result.data as Record<string, string | number | boolean | null>
+    }
 }
 
 function unknownFallback(reason: string): UnknownCommand {
@@ -272,12 +291,16 @@ function validateSingleCommand(raw: unknown, context: VoiceCommandContext): Voic
                 return unknownFallback(`Required form fields not found in speech: "${missing.join(", ")}"`)
             }
 
-            // TODO: obtain data
+            const { data, warning } = validatePayload(rawPayload, formSchema)
+
+            if (warning) {
+                console.warn("[INTENT] form_fill warning: ", warning)
+            }
 
             return {
                 type: "form_fill",
                 target: object.target as string,
-                payload: {}, // TODO: add data
+                payload: data,
                 confidence
             } satisfies FormFillCommand
         }
@@ -297,14 +320,23 @@ function validateSingleCommand(raw: unknown, context: VoiceCommandContext): Voic
                 return unknownFallback(`Required params for action "${object.action}" not found in speech: ${missing.join(", ")}. Ask user to be more specific`)
             }
 
-            // TODO: obtain data
+            const { data, warning } = validatePayload(rawPayload, actionSchema)
 
-            return {
+            if (warning) {
+                console.warn("[INTENT] action warning: ", warning)
+            }
+
+            const command: ActionCommand = {
                 type: "action",
                 action: object.action as string,
-                payload: {}, // TODO: add data
                 confidence,
-            } satisfies ActionCommand
+            }
+
+            if (Object.keys(data).length > 0) {
+                command.payload = data
+            }
+
+            return command
         }
 
         case "unknown": {
