@@ -33,10 +33,24 @@ export interface AIResponse {
     }>
 }
 
+function schemaToPromptBlock(label: string, schema: VoiceSchema): string {
+    const lines: Array<string> = []
+
+    if (!(schema instanceof z.ZodType)) {
+        lines.push(` "${label}"`)
+        lines.push(` shape: ${JSON.stringify(schema)}`)
+        return lines.join("\n")
+    }
+
+
+
+    return ""
+}
+
 function buildSystemPrompt(context: VoiceCommandContext): string {
     const routeBlock = context.routes && context.routes.length > 0 ? context.routes.map(route => ` "${route.path}" <- ${route.name}`) : " (none)"
-    const formBlock = ""
-    const actionBlock = ""
+    const formBlock = context.forms && Object.keys(context.forms).length > 0 ? Object.entries(context.forms).map(([id, schema]) => schemaToPromptBlock(id, schema)).join("\n\n") : " (none)"
+    const actionBlock = context.actions && Object.keys(context.actions).length > 0 ? Object.entries(context.actions).map(([id, schema]) => schemaToPromptBlock(id, schema)).join("\n\n") : " (none)"
     // TODO: get formBlock, and actionBlock
 
     return `
