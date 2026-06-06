@@ -101,21 +101,32 @@ function typeLabel(field: JsonSchemaField): string {
 }
 
 function schemaToPromptBlock(label: string, schema: VoiceSchema): string {
-    const lines: Array<string> = []
+    const json = toJsonSchema(schema)
+    if (!json) {
+        return ` "${label}": (schema unavailable) `
+    }
 
-    if (!(schema instanceof z.ZodType)) {
-        lines.push(` "${label}"`)
-        lines.push(` shape: ${JSON.stringify(schema)}`)
+    const topDescription = json.description ? `<- ${json.description}` : ""
+    const lines = [` "${label}" ${topDescription}`]
+
+    const properties = json.properties
+    const required = json.required ?? []
+
+    if (!properties || Object.keys(properties).length === 0) {
+        lines.push(" (no params - zero-argument action)")
         return lines.join("\n")
     }
 
-    const topDescription = schema.description ? `<- ${schema.description}` : ""
-    lines.push(` "${label}" ${topDescription}`)
+    lines.push(" params:")
 
+    for (const [key, field] of Object.entries(properties)) {
+        const isRequired = required.includes(key)
+        const type = typeLabel(field)
+        const fieldDescription = field.description ? `<- ${field.description}` : ""
+        lines.push(` - "${key}": ${type} ${isRequired ? "[REQUIRED]" : "(optional)"} ${fieldDescription}`)
+    }
 
-
-
-    return ""
+    return lines.join("\n")
 }
 
 function buildSystemPrompt(context: VoiceCommandContext): string {
