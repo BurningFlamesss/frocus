@@ -23,9 +23,35 @@ export function VoiceButton({
     idleLabel = "Hold to speak",
     children,
 }: VoiceButtonProps): React.ReactNode {
-    const { state, isRecording,isProcessing, transcript, error, start, stop, reset } = useVoiceCommand({
+    const { state, isRecording, isProcessing, transcript, error, start, stop, reset } = useVoiceCommand({
         context, onCommand, onError, minConfidence, maxDurationMs
     })
+
+    const handleClick = () => {
+        if (["idle", "ready", "error"].includes(state)) {
+            if (["error", "ready"].includes(state)) {
+                reset()
+            }
+            start()
+        } else if (isRecording) {
+            stop()
+        }
+    }
+
+    const handlePointerDown = () => {
+        if (["idle", "ready", "error"].includes(state)) {
+            if (state !== "idle") {
+                reset()
+            }
+            start()
+        }
+    }
+
+    const handlePointerUp = () => {
+        if (isRecording) {
+            stop()
+        }
+    }
 
     return <></>
 }
