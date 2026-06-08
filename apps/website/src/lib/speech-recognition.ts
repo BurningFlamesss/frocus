@@ -2,11 +2,13 @@ interface SpeechRecognitionAlternativeLike {
     transcript: string;
 }
 
-interface SpeechRecognitionResultLike extends ArrayLike<SpeechRecognitionAlternativeLike> {
+interface SpeechRecognitionResultLike
+    extends ArrayLike<SpeechRecognitionAlternativeLike> {
     isFinal: boolean;
 }
 
 interface SpeechRecognitionEventLike {
+    resultIndex: number;
     results: ArrayLike<SpeechRecognitionResultLike>;
 }
 
@@ -14,9 +16,11 @@ interface SpeechRecognitionLike {
     continuous: boolean;
     interimResults: boolean;
     lang: string;
+
     onresult: ((event: SpeechRecognitionEventLike) => void) | null;
     onerror: (() => void) | null;
     onend: (() => void) | null;
+
     start: () => void;
     stop: () => void;
     abort: () => void;
@@ -31,19 +35,30 @@ export interface SpeechRecognitionSession {
     start: () => boolean;
     stop: () => Promise<string>;
     abort: () => void;
+
+    // NEW
+    getTranscript: () => string;
 }
 
-function getSpeechRecognitionConstructor(): (new () => SpeechRecognitionLike) | null {
+function getSpeechRecognitionConstructor():
+    | (new () => SpeechRecognitionLike)
+    | null {
     if (typeof window === "undefined") {
         return null;
     }
 
     const browserWindow = window as WindowWithSpeechRecognition;
 
-    return browserWindow.SpeechRecognition ?? browserWindow.webkitSpeechRecognition ?? null;
+    return (
+        browserWindow.SpeechRecognition ??
+        browserWindow.webkitSpeechRecognition ??
+        null
+    );
 }
 
-export function createSpeechRecognitionSession(languageCode: string): SpeechRecognitionSession | null {
+export function createSpeechRecognitionSession(
+    languageCode: string,
+): SpeechRecognitionSession | null {
     const SpeechRecognition = getSpeechRecognitionConstructor();
 
     if (!SpeechRecognition) {
@@ -51,16 +66,25 @@ export function createSpeechRecognitionSession(languageCode: string): SpeechReco
     }
 
     const recognition = new SpeechRecognition();
-    let transcript = "";
+
     let started = false;
+
+    let finalTranscript = "";
+    let interimTranscript = "";
+
     let stopResolve: ((value: string) => void) | null = null;
     let stopPromise: Promise<string> | null = null;
+
+    const getTranscript = () =>
+        `${finalTranscript} ${interimTranscript}`
+            .replace(/\s+/g, " ")
+            .trim();
 
     const finalize = () => {
         started = false;
 
         if (stopResolve) {
-            stopResolve(transcript.trim());
+            stopResolve(getTranscript());
             stopResolve = null;
             stopPromise = null;
         }
@@ -69,18 +93,36 @@ export function createSpeechRecognitionSession(languageCode: string): SpeechReco
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = languageCode;
+
     recognition.onresult = (event) => {
-        transcript = Array.from(event.results)
-            .map((result) => result[0]?.transcript ?? "")
-            .join(" ")
-            .replace(/\s+/g, " ")
-            .trim();
+        interimTranscript = "";
+
+        for (
+            let i = event.resultIndex;
+            i < event.results.length;
+            i++
+        ) {
+            const result = event.results[i];
+
+            const text = result[0]?.transcript ?? "";
+
+            if (result.isFinal) {
+                finalTranscript += `${text} `;
+            } else {
+                interimTranscript += text;
+            }
+        }
     };
+
     recognition.onerror = () => {
         finalize();
     };
+
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
     recognition.onend = () => {
-        finalize();
+        setTimeout(finalize, 500);
     };
 
     return {
@@ -89,7 +131,9 @@ export function createSpeechRecognitionSession(languageCode: string): SpeechReco
                 return false;
             }
 
-            transcript = "";
+            finalTranscript = "";
+            interimTranscript = "";
+
             started = true;
 
             try {
@@ -98,40 +142,39 @@ export function createSpeechRecognitionSession(languageCode: string): SpeechReco
                 return true;
             } catch {
                 started = false;
-                transcript = "";
-                
+
                 return false;
             }
         },
+
         stop() {
             if (!started) {
-                return Promise.resolve(transcript.trim());
+                return Promise.resolve(getTranscript());
             }
 
             if (!stopPromise) {
                 stopPromise = new Promise<string>((resolve) => {
                     stopResolve = resolve;
                 });
-            }
 
-            try {
                 recognition.stop();
-            } catch {
-                finalize();
             }
 
             return stopPromise;
         },
+
         abort() {
             started = false;
 
             try {
                 recognition.abort();
             } catch {
-                // Ignore browser-specific abort errors.
+                // ignore
             }
 
             finalize();
         },
+
+        getTranscript,
     };
 }

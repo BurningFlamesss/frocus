@@ -12,7 +12,7 @@ export async function transcribeWithElevenLabs({ buffer, filename, mimeType, lan
     const apiKey = process.env.ELEVENLABS_API_KEY;
 
     if (!apiKey) {
-        throw new Error("ELEVENLABS_API_KEY is not configured");
+        console.error("ELEVENLABS_API_KEY is not configured");
     }
 
     const form = new FormData();

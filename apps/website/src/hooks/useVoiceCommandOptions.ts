@@ -51,7 +51,7 @@ export function useVoiceCommand({
     const speechRecognitionStopPromiseRef = useRef<Promise<string> | null>(null)
 
     const stopStream = () => {
-        streamRef.current?.getTracks().map((track) => track.stop())
+        streamRef.current?.getTracks().forEach((track) => track.stop())
         streamRef.current = null
     }
 
@@ -88,23 +88,22 @@ export function useVoiceCommand({
     }
 
     const stopRecognition = async (sessionId: number) => {
-        const recognition = speechRecognitionRef.current
-        speechRecognitionRef.current = null
+        const recognition = speechRecognitionRef.current;
 
         if (!recognition || !isCurrentSession(sessionId)) {
-            return ""
+            return "";
         }
 
-        const stopPromise = speechRecognitionStopPromiseRef.current ?? recognition.stop()
-        speechRecognitionStopPromiseRef.current = stopPromise
+        if (!speechRecognitionStopPromiseRef.current) {
+            speechRecognitionStopPromiseRef.current = recognition.stop();
+        }
 
         try {
-            return await stopPromise
+            return await speechRecognitionStopPromiseRef.current;
         } catch {
-            return ""
+            return "";
         }
-    }
-
+    };
     const processBlob = async (
         blob: Blob | null,
         mimeType: string,
@@ -131,6 +130,10 @@ export function useVoiceCommand({
             } catch (error) {
                 uploadError = error as Error;
             }
+        }
+
+        if (!rawTranscript) {
+            rawTranscript = speechRecognitionRef.current?.getTranscript().trim() ?? "";
         }
 
         if (!rawTranscript) {
@@ -248,7 +251,7 @@ export function useVoiceCommand({
         }
 
         if (!isCurrentSession(sessionId)) {
-            stream.getTracks().map((track) => track.stop())
+            stream.getTracks().forEach((track) => track.stop())
             startLockRef.current = false
 
             return
@@ -292,22 +295,30 @@ export function useVoiceCommand({
 
         recorder.onstop = async () => {
             if (!isCurrentSession(sessionId)) {
-                return
+                return;
             }
 
             clearTimer();
 
-            const fallbackTranscriptPromise = stopRecognition(sessionId)
+            // Give Brave/Chromium a chance to emit the last result
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            const fallbackTranscriptPromise =
+                stopRecognition(sessionId);
 
             stopStream();
 
-            const blob = chunksRef.current.length > 0
-                ? new Blob(chunksRef.current, {
-                    type: mimeType,
-                })
-                : null;
+            const blob =
+                chunksRef.current.length > 0
+                    ? new Blob(chunksRef.current, { type: mimeType })
+                    : null;
 
-            await processBlob(blob, mimeType, sessionId, fallbackTranscriptPromise);
+            await processBlob(
+                blob,
+                mimeType,
+                sessionId,
+                fallbackTranscriptPromise,
+            );
         };
 
 
@@ -354,12 +365,7 @@ export function useVoiceCommand({
         const recognition = speechRecognitionRef.current;
 
         if (recognition && !speechRecognitionStopPromiseRef.current) {
-            try {
-                speechRecognitionStopPromiseRef.current = recognition.stop();
-            } catch {
-                speechRecognitionRef.current = null;
-                speechRecognitionStopPromiseRef.current = null;
-            }
+            speechRecognitionStopPromiseRef.current = recognition.stop();
         }
 
         const recorder = mediaRecorderRef.current;
@@ -370,8 +376,10 @@ export function useVoiceCommand({
 
         if (recorder.state === "recording") {
             stopRequestedRef.current = false;
+
             recorder.requestData();
             recorder.stop();
+
             return;
         }
 
