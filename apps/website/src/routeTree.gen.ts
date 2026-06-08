@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DownloadIndexRouteImport } from './routes/download/index'
+import { Route as ApiTranscribeRouteImport } from './routes/api/transcribe'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,30 +23,39 @@ const DownloadIndexRoute = DownloadIndexRouteImport.update({
   path: '/download/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTranscribeRoute = ApiTranscribeRouteImport.update({
+  id: '/api/transcribe',
+  path: '/api/transcribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/transcribe': typeof ApiTranscribeRoute
   '/download/': typeof DownloadIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/transcribe': typeof ApiTranscribeRoute
   '/download': typeof DownloadIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/transcribe': typeof ApiTranscribeRoute
   '/download/': typeof DownloadIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/download/'
+  fullPaths: '/' | '/api/transcribe' | '/download/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/download'
-  id: '__root__' | '/' | '/download/'
+  to: '/' | '/api/transcribe' | '/download'
+  id: '__root__' | '/' | '/api/transcribe' | '/download/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiTranscribeRoute: typeof ApiTranscribeRoute
   DownloadIndexRoute: typeof DownloadIndexRoute
 }
 
@@ -65,11 +75,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DownloadIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/transcribe': {
+      id: '/api/transcribe'
+      path: '/api/transcribe'
+      fullPath: '/api/transcribe'
+      preLoaderRoute: typeof ApiTranscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiTranscribeRoute: ApiTranscribeRoute,
   DownloadIndexRoute: DownloadIndexRoute,
 }
 export const routeTree = rootRouteImport

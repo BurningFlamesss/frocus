@@ -4,55 +4,75 @@ import FormDataNode from "form-data";
 import { z } from "zod";
 
 const TranscribeInput = z.object({
-    audioBase64: z.string(),
+    file: z.any(),
     mimeType: z.string().optional(),
-    languageCode: z.string().optional()
-})
+    languageCode: z.string().optional(),
+});
 
 export interface TranscribeResult {
-    transcript: string
+    transcript: string;
 }
 
 export const transcribeAudio = createServerFn({ method: "POST" })
-    .inputValidator(TranscribeInput)
+    .validator(TranscribeInput)
     .handler(async ({ data }): Promise<TranscribeResult> => {
+        const apiKey = process.env.ELEVENLABS_API_KEY;
 
-        const apikey = process.env.ELEVENLABS_API_KEY
-
-        if (!apikey) {
-            throw new Error("[STT] ELEVENLABS_API_KEY isnot configured")
+        if (!apiKey) {
+            throw new Error("ELEVENLABS_API_KEY is not configured");
         }
 
-        const { audioBase64, mimeType = "audio/webm", languageCode = "ne" } = data
-        const audioBuffer = Buffer.from(audioBase64, "base64")
+        const {
+            file,
+            mimeType = "audio/webm",
+            languageCode = "ne",
+        } = data;
 
-        const form = new FormDataNode()
-        form.append("file", audioBuffer, {
-            filename: "recording.webm",
-            contentType: mimeType
-        })
-        form.append("model_id", "scribe_v1")
-        form.append("language_code", languageCode)
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        const extension =
+            mimeType.includes("ogg")
+                ? "ogg"
+                : mimeType.includes("mp4")
+                    ? "mp4"
+                    : "webm";
+
+        const form = new FormDataNode();
+
+        form.append("file", buffer, {
+            filename: `recording.${extension}`,
+            contentType: mimeType,
+        });
+
+        form.append("model_id", "scribe_v1");
+        form.append("language_code", languageCode);
 
         try {
-            const response = await axios.post<{ text: string }>("https://api.elevenlabs.io/v1/speech-to-text", form, {
-                headers: {
-                    "xi-api-key": apikey,
-                    ...form.getHeaders()
+            const response = await axios.post<{ text: string }>(
+                "https://api.elevenlabs.io/v1/speech-to-text",
+                form,
+                {
+                    headers: {
+                        "xi-api-key": apiKey,
+                        ...form.getHeaders(),
+                    },
+                    timeout: 30000,
+                    maxBodyLength: Infinity,
                 },
-                maxBodyLength: Infinity,
-                timeout: 30_000
-            })
+            );
 
             return {
-                transcript: response.data.text ?? ""
-            }
+                transcript: response.data.text ?? "",
+            };
         } catch (error) {
-            const axiosError = error as AxiosError<{ detail?: unknown }>
-            const detail = axiosError.response?.data.detail
-            const message = (typeof detail === "string" ? detail : JSON.stringify(detail)) ?? axiosError.message ?? "Unknown Elevenlabs Error"
+            const err = error as AxiosError<{ detail?: unknown }>;
 
-            throw new Error(`[STT] Elevenlabs request failed: ${message}`)
+            throw new Error(
+                `[STT] ElevenLabs request failed: ${typeof err.response?.data?.detail === "string"
+                    ? err.response.data.detail
+                    : JSON.stringify(err.response?.data?.detail)
+                }`,
+            );
         }
-
-    })
+    });

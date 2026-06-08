@@ -353,7 +353,7 @@ function validateSingleCommand(raw: unknown, context: VoiceCommandContext): Voic
 }
 
 export const parseIntent = createServerFn({ method: "POST" })
-    .inputValidator(ParseIntentInput)
+    .validator(ParseIntentInput)
     .handler(async ({ data }): Promise<ParseIntentResult> => {
         const apiKey = process.env.OPENROUTER_API_KEY
 

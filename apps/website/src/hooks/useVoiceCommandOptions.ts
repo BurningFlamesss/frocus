@@ -1,8 +1,7 @@
+import { uploadAudioForTranscription } from "#/lib/transcribe.ts";
 import { parseIntent } from "#/server/intent.ts";
-import { transcribeAudio } from "#/server/stt.ts";
 import type { VoiceCommandContext, VoiceCommandResult, VoiceState } from "#/types/voice.ts";
 import { useRef, useState } from "react";
-
 
 export interface UseVoiceCommandOptions {
     context: VoiceCommandContext;
@@ -62,71 +61,107 @@ export function useVoiceCommand({
         onError?.(error)
     }
 
-    const processBlob = async (blob: Blob, mimeType: string) => {
-        setState("transcribing")
-        let audioBase64: string;
-
-        try {
-            const buffer = await blob.arrayBuffer()
-            audioBase64 = Buffer.from(buffer).toString("base64")
-        } catch (err) {
-            return fail(new Error(`Failed to encode audio: ${(err as Error).message}`))
+    const processBlob = async (
+        blob: Blob,
+        mimeType: string,
+    ) => {
+        if (blob.size === 0) {
+            return fail(
+                new Error(
+                    "Recorded audio is empty.",
+                ),
+            );
         }
 
-        let rawTranscript: string;
+        setState("transcribing");
+
+        const extension =
+            mimeType.includes("ogg")
+                ? "ogg"
+                : "webm";
+
+        const file = new File(
+            [blob],
+            `recording.${extension}`,
+            {
+                type: mimeType,
+            },
+        );
+
+        let rawTranscript = "";
+
         try {
-            ({ transcript: rawTranscript } = await transcribeAudio({
-                data: {
-                    audioBase64,
-                    mimeType,
-                    languageCode: context.language ?? "ne"
-                }
-            }))
-            setTranscript(rawTranscript)
-        } catch (err) {
-            return fail(err as Error)
+            const response =
+                await uploadAudioForTranscription(
+                    file,
+                    context.language ?? "ne",
+                );
+
+            rawTranscript =
+                response.transcript;
+
+            setTranscript(rawTranscript);
+        } catch (error) {
+            return fail(error as Error);
         }
 
         if (!rawTranscript.trim()) {
-            return fail(new Error("No speech detected. Please try again!"))
+            return fail(
+                new Error(
+                    "No speech detected.",
+                ),
+            );
         }
 
-        setState("parsing")
-        let commands: VoiceCommandResult["command"]
+        setState("parsing");
 
         try {
-            ({ commands } = await parseIntent({
-                data: {
-                    transcript: rawTranscript,
-                    context
-                }
-            }))
-        } catch (err) {
-            return fail(err as Error)
+            const { commands } =
+                await parseIntent({
+                    data: {
+                        transcript:
+                            rawTranscript,
+                        context,
+                    },
+                });
+
+            const gated = commands.map(
+                (command) => {
+                    if (
+                        command.confidence <
+                        minConfidence
+                    ) {
+                        return {
+                            type:
+                                "unknown" as const,
+                            confidence:
+                                command.confidence,
+                            rawTranscript,
+                        };
+                    }
+
+                    return command;
+                },
+            );
+
+            const result: VoiceCommandResult =
+            {
+                command: gated,
+                transcript:
+                    rawTranscript,
+                durationMs:
+                    Date.now() -
+                    startTimeRef.current,
+            };
+
+            setResult(result);
+            setState("ready");
+
+            onCommand?.(result);
+        } catch (error) {
+            return fail(error as Error);
         }
-
-        const gated = commands.map(command => {
-            if (command.confidence < minConfidence) {
-                return {
-                    type: "unknown" as const,
-                    confidence: command.confidence,
-                    rawTranscript: rawTranscript
-                }
-            }
-
-            return command
-        })
-
-        const commandResult: VoiceCommandResult = {
-            command: gated,
-            transcript: rawTranscript,
-            durationMs: Date.now() - startTimeRef.current
-        }
-
-        setResult(commandResult)
-        setState("ready")
-        onCommand?.(commandResult)
-    }
+    };
 
 
     const start = async () => {
@@ -150,10 +185,20 @@ export function useVoiceCommand({
         streamRef.current = stream
 
         // mimeType list from google
-        const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/mp4"].find(mType => MediaRecorder.isTypeSupported(mType) ?? "")
+        const SUPPORTED_MIME_TYPES = [
+            "audio/webm;codecs=opus",
+            "audio/webm",
+            "audio/ogg;codecs=opus",
+        ];
 
-        const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {})
-        mediaRecorderRef.current = recorder
+        const mimeType =
+            SUPPORTED_MIME_TYPES.find((type) =>
+                MediaRecorder.isTypeSupported(type),
+            ) ?? "";
+
+        const recorder = mimeType
+            ? new MediaRecorder(stream, { mimeType })
+            : new MediaRecorder(stream); mediaRecorderRef.current = recorder
 
         recorder.ondataavailable = event => {
             if (event.data.size > 0) {
@@ -162,11 +207,39 @@ export function useVoiceCommand({
         }
 
         recorder.onstop = async () => {
-            clearTimer()
-            stopStream()
-            const blob = new Blob(chunksRef.current, { type: mimeType || "audio/webm" })
-            await processBlob(blob, mimeType || "audio/webm")
-        }
+            clearTimer();
+            stopStream();
+
+            if (
+                chunksRef.current.length ===
+                0
+            ) {
+                return fail(
+                    new Error(
+                        "No audio was captured.",
+                    ),
+                );
+            }
+
+            const blob = new Blob(
+                chunksRef.current,
+                {
+                    type: mimeType,
+                },
+            );
+
+            console.log({
+                mimeType,
+                chunks:
+                    chunksRef.current.length,
+                blobSize: blob.size,
+            });
+
+            await processBlob(
+                blob,
+                mimeType,
+            );
+        };
 
 
         recorder.onerror = (err) => {
@@ -186,11 +259,23 @@ export function useVoiceCommand({
     }
 
     const stop = () => {
-        clearTimer()
-        if (mediaRecorderRef.current?.state === "recording") {
-            mediaRecorderRef.current.stop()
+        clearTimer();
+
+        const recorder =
+            mediaRecorderRef.current;
+
+        if (!recorder) {
+            return;
         }
-    }
+
+        if (
+            recorder.state ===
+            "recording"
+        ) {
+            recorder.requestData();
+            recorder.stop();
+        }
+    };
 
     const reset = () => {
         stop()
