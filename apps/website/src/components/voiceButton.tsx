@@ -23,10 +23,12 @@ export function VoiceButton({
     minConfidence,
     maxDurationMs,
     className = "",
-    idleLabel = "Hold to speak",
+    idleLabel = "Hold or press to speak",
     children,
 }: VoiceButtonProps): React.ReactNode {
+
     const pointerInteractionRef = useRef(false)
+
     const { state, isRecording, isProcessing, transcript, error, start, stop, reset } = useVoiceCommand({
         context, onCommand, onError, minConfidence, maxDurationMs
     })
@@ -50,14 +52,10 @@ export function VoiceButton({
     }
 
     const handleClick = () => {
-        if (pointerInteractionRef.current) {
-            return
-        }
+        if (pointerInteractionRef.current) return
 
         if (["idle", "ready", "error"].includes(state)) {
-            if (["error", "ready"].includes(state)) {
-                reset()
-            }
+            if (["error", "ready"].includes(state)) reset()
             void start()
         } else if (isRecording) {
             stop()
@@ -65,38 +63,33 @@ export function VoiceButton({
     }
 
     const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
-        if (event.button !== 0) {
-            return
-        }
+        if (event.button !== 0) return
 
         pointerInteractionRef.current = true
 
         if (["idle", "ready", "error"].includes(state)) {
-            if (state !== "idle") {
-                reset()
-            }
+            if (state !== "idle") reset()
             void start()
         }
     }
 
     const handlePointerUp = () => {
         stop()
-
-        window.setTimeout(() => {
+        setTimeout(() => {
             pointerInteractionRef.current = false
         }, 0)
     }
 
     const handlePointerCancel = () => {
         stop()
-
-        window.setTimeout(() => {
+        setTimeout(() => {
             pointerInteractionRef.current = false
         }, 0)
     }
 
     return (
         <div className={cn("inline-flex flex-col items-center gap-2", className)}>
+
             <button
                 type="button"
                 aria-label={stateLabel[state]}
@@ -107,35 +100,17 @@ export function VoiceButton({
                 onClick={!isProcessing ? handleClick : undefined}
                 disabled={isProcessing}
                 className={cn("w-18 h-18 rounded-full border-none text-white flex items-center justify-center", isProcessing ? "cursor-not-allowed" : "cursor-pointer", isRecording ? "scale-[1.08]" : "scale-100")}
-                style={{
-                    backgroundColor: stateColor[state],
-                }}
+                style={{ backgroundColor: stateColor[state] }}
             >
-                {
-                    children ? children : isProcessing ? <FaSpinner /> : isRecording ? <FaStop /> : <FaMicrophone />
-                }
+                {children ? children : isProcessing ? <FaSpinner /> : isRecording ? <FaStop /> : <FaMicrophone />}
             </button>
 
             <span className="text-xs font-medium" style={{ color: stateColor[state] }}>
                 {stateLabel[state]}
             </span>
 
-            {
-                transcript ? (
-                    <span className="text-[11px] max-w-60 text-center text-[#6B7280] italic">
-                        "{transcript}"
-                    </span>
-                ) : null
-            }
-
-            {
-                error ? (
-                    <span className="text-[11px] max-w-60 text-center" style={{ color: stateColor.error }}>
-                        {error.message}
-                    </span>
-                ) : null
-            }
-
+            {transcript && <span className="text-[11px] max-w-60 text-center text-[#6B7280] italic">"{transcript}"</span>}
+            {error && <span className="text-[11px] max-w-60 text-center" style={{ color: stateColor.error }}>{error.message}</span>}
         </div>
     )
 }

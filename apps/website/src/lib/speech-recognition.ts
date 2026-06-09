@@ -35,38 +35,23 @@ export interface SpeechRecognitionSession {
     start: () => boolean;
     stop: () => Promise<string>;
     abort: () => void;
-
-    // NEW
     getTranscript: () => string;
 }
 
-function getSpeechRecognitionConstructor():
-    | (new () => SpeechRecognitionLike)
-    | null {
-    if (typeof window === "undefined") {
-        return null;
-    }
+function getSpeechRecognitionConstructor(): (new () => SpeechRecognitionLike) | null {
+    if (typeof window === "undefined") return null;
 
     const browserWindow = window as WindowWithSpeechRecognition;
 
-    return (
-        browserWindow.SpeechRecognition ??
-        browserWindow.webkitSpeechRecognition ??
-        null
-    );
+    return browserWindow.SpeechRecognition ?? browserWindow.webkitSpeechRecognition ?? null;
 }
 
-export function createSpeechRecognitionSession(
-    languageCode: string,
-): SpeechRecognitionSession | null {
+export function createSpeechRecognitionSession(languageCode: string): SpeechRecognitionSession | null {
     const SpeechRecognition = getSpeechRecognitionConstructor();
 
-    if (!SpeechRecognition) {
-        return null;
-    }
+    if (!SpeechRecognition) return null;
 
     const recognition = new SpeechRecognition();
-
     let started = false;
 
     let finalTranscript = "";
@@ -75,10 +60,9 @@ export function createSpeechRecognitionSession(
     let stopResolve: ((value: string) => void) | null = null;
     let stopPromise: Promise<string> | null = null;
 
-    const getTranscript = () =>
-        `${finalTranscript} ${interimTranscript}`
-            .replace(/\s+/g, " ")
-            .trim();
+    const getRawTranscript = () => `${finalTranscript} ${interimTranscript}`.replace(/\s+/g, " ").trim();
+
+    const getTranscript = () => getRawTranscript();
 
     const finalize = () => {
         started = false;
@@ -97,13 +81,8 @@ export function createSpeechRecognitionSession(
     recognition.onresult = (event) => {
         interimTranscript = "";
 
-        for (
-            let i = event.resultIndex;
-            i < event.results.length;
-            i++
-        ) {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
             const result = event.results[i];
-
             const text = result[0]?.transcript ?? "";
 
             if (result.isFinal) {
@@ -114,26 +93,16 @@ export function createSpeechRecognitionSession(
         }
     };
 
-    recognition.onerror = () => {
-        finalize();
-    };
+    recognition.onerror = () => finalize();
 
-    recognition.continuous = true;
-    recognition.interimResults = true;
-
-    recognition.onend = () => {
-        setTimeout(finalize, 500);
-    };
+    recognition.onend = () => setTimeout(finalize, 200);
 
     return {
         start() {
-            if (started) {
-                return false;
-            }
+            if (started) return false;
 
             finalTranscript = "";
             interimTranscript = "";
-
             started = true;
 
             try {
@@ -146,35 +115,29 @@ export function createSpeechRecognitionSession(
                 return false;
             }
         },
-
         stop() {
-            if (!started) {
-                return Promise.resolve(getTranscript());
-            }
+            if (!started) return Promise.resolve(getTranscript());
 
             if (!stopPromise) {
                 stopPromise = new Promise<string>((resolve) => {
                     stopResolve = resolve;
                 });
-
                 recognition.stop();
             }
 
             return stopPromise;
         },
-
         abort() {
             started = false;
 
             try {
                 recognition.abort();
             } catch {
-                // ignore
+
             }
 
             finalize();
         },
-
         getTranscript,
     };
 }
