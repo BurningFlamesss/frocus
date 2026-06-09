@@ -31,9 +31,7 @@ function Home() {
   })
 
   return (
-    <div>
-      Frocus
-      <br />
+    <div className="p-4">
       <VoiceButton context={voiceContext} onCommand={async (result) => await executeAll(result.command, executor)} ></VoiceButton>
     </div>
   )
