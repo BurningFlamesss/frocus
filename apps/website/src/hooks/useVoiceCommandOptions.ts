@@ -1,3 +1,4 @@
+import { serializeVoiceContext } from "#/lib/serialize-voice-context.ts";
 import { createSpeechRecognitionSession, type SpeechRecognitionSession } from "#/lib/speech-recognition.ts";
 import { uploadAudioForTranscription } from "#/lib/transcribe.ts";
 import { parseIntent } from "#/server/intent.ts";
@@ -169,9 +170,10 @@ export function useVoiceCommand({
 
         try {
             setState("parsing");
+            const serializableContext = serializeVoiceContext(context);
 
             const { commands } = await parseIntent({
-                data: { transcript: rawTranscript, context },
+                data: { transcript: rawTranscript, context: serializableContext },
             });
 
             const gated = commands.map((command) => command.confidence < minConfidence
