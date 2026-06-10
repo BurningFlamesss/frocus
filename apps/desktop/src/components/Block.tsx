@@ -1,8 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { cn } from '../lib/utils';
 
 function Block() {
     const [time, setTime] = useState<number>(0)
     const [isChallengeAccepted, setIsChallengeAccepted] = useState<boolean>(false)
+    const video = useRef<HTMLVideoElement>(null)
+    const canvas = useRef<HTMLCanvasElement>(null)
+    const [facingMode, setFacingMode] = useState<"user" | "environment">("environment")
+    const [isCaptured, setIsCaptured] = useState<boolean>(false)
+
+    const startCamera = () => {
+
+    }
+
+    useEffect(() => {
+        startCamera()
+    }, [facingMode])
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -20,7 +33,12 @@ function Block() {
             <br />
             {
                 isChallengeAccepted
-                    ? null
+                    ? (
+                        <>
+                            <video ref={video} autoPlay playsInline className={cn("w-full h-full object-cover", isCaptured ? "hidden" : "block")} />
+                            <canvas ref={canvas} className={cn("w-full h-full object-cover", isCaptured ? "block" : "hidden")} />
+                        </>
+                    )
                     : <button onClick={() => setIsChallengeAccepted(true)} type="button" className="p-4 cursor-pointer rounded-xl bg-green-200">
                         Accept the challenge
                     </button>
