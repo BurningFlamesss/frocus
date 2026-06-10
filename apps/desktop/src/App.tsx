@@ -1,8 +1,10 @@
+import Block from "./components/Block";
+
 function App() {
 
   return (
     <div>
-      Frocus
+      <Block></Block>
     </div>
   );
 }
