@@ -109,8 +109,8 @@ export function VoiceButton({
                 {stateLabel[state]}
             </span>
 
-            {transcript && <span className="text-[11px] max-w-60 text-center text-[#6B7280] italic">"{transcript}"</span>}
-            {error && <span className="text-[11px] max-w-60 text-center" style={{ color: stateColor.error }}>{error.message}</span>}
+            {transcript && <span className="text-[11px] max-w-60 text-center text-[#6B7280] italic">"{transcript.slice(0, 10)}..."</span>}
+            {error && <span className="text-[11px] max-w-60 text-center" style={{ color: stateColor.error }}>{error.message.slice(0, 10)}...</span>}
         </div>
     )
 }
