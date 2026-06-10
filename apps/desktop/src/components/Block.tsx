@@ -9,19 +9,51 @@ function Block() {
     const [facingMode, setFacingMode] = useState<"user" | "environment">("environment")
     const [isCaptured, setIsCaptured] = useState<boolean>(false)
 
-    const startCamera = () => {
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setTime(time => time + 1)
+        }, 1000);
 
-    }
+        return () => clearInterval(timer)
+    }, [])
 
     useEffect(() => {
         startCamera()
     }, [facingMode])
 
     useEffect(() => {
-        const timer = setInterval(() => {
-            setTime(time => time + 1)
-        }, 1000);
+        const videoElement = video.current
+
+        return () => {
+            if (videoElement?.srcObject) {
+                const stream = videoElement.srcObject as MediaStream;
+                stream.getTracks().forEach((track) => track.stop());
+            }
+        };
     }, [])
+
+
+    const startCamera = async () => {
+        try {
+            const videoElement = video.current
+
+            if (videoElement?.srcObject) {
+                const stream = videoElement.srcObject as MediaStream;
+                stream.getTracks().forEach((track) => track.stop());
+            }
+
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode }
+            })
+
+            if (videoElement) {
+                videoElement.srcObject = stream
+            }
+        } catch (error) {
+            alert("Camera access denied or not available.");
+            console.error(error);
+        }
+    }
 
     return (
         <main className="h-dvh w-dvw flex flex-col items-center justify-center">
