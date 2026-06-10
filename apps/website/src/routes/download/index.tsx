@@ -5,5 +5,11 @@ export const Route = createFileRoute('/download/')({
 })
 
 function RouteComponent() {
-  return <div>Hello "/download/"!</div>
+  return (
+    <div>
+      Download the app from here: LINK
+      <br />
+      Download the extension from here: LINK
+    </div>
+  )
 }
