@@ -18,7 +18,11 @@ Frocus is a productivity system that helps you live a life you always wanted to 
 
 ## How it works
 
-...
+User -> Website -> Extension -> Desktop app (Frontend + Backend) (Installation)
+Extension -> Backend -> Database -> Backend -> Extension (Communication)
+User -> Frontend -> Backend -> Database -> Backend -> Extension (Rule & Settings propagation)
+User -> Extension -> Backend -> Database (Rule & Settings propagation)
+
 
 ## Tech Stacks
 
