@@ -1,7 +1,7 @@
 {
-  "name": "frocus-sidecar",
+  "name": "frocus-backend",
   "version": "1.0.0",
-  "description": "Node.js WebSocket Sidecar for Frocus",
+  "description": "Node.js backend for Frocus",
   "main": "src/ws-server.ts",
   "scripts": {
     "dev": "bun run src/ws-server.ts",
